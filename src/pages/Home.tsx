@@ -1,111 +1,164 @@
-// src/pages/Home.tsx
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LOVELY_UPDATES } from '../data/updates';
 import LovelyCard from '../components/LovelyCard';
-import FloatingLetter from '../components/FloatingLetter';
 
-// 1. Import your personal princess photo
 import princessPhoto from '../assets/lovely/valentineday.jpg';
 
+// 1. Define the interface to fix the "Property does not exist" errors
+interface Note {
+  text: string;
+  date: string;
+  category: string;
+}
+
+interface TravelPlace {
+  id: number;
+  city: string;
+  country: string;
+  date: string;
+  desc: string;
+  gallery: string[]; 
+}
+
 const Home: React.FC = () => {
-  // Logic for countdown to Valentine's Day 2026
-  const daysUntilValentine = Math.ceil(
-    (new Date('2026-02-14').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-  );
+  // --- STATE ---
+  const [newNote, setNewNote] = useState("");
+  const [selectedCity, setSelectedCity] = useState<TravelPlace | null>(null);
+  const [likedPhotos, setLikedPhotos] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  // --- LOCAL STORAGE LOGIC (Typed as Note[]) ---
+  const [notes, setNotes] = useState<Note[]>(() => {
+    const saved = localStorage.getItem('lovely-notes');
+    return saved ? JSON.parse(saved) : [
+      { text: "Building our life on a firm foundation.", date: "Jan 15", category: "Worship" },
+      { text: "The views were beautiful, but I was only looking at you.", date: "Dec 20", category: "Travel" }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lovely-notes', JSON.stringify(notes));
+  }, [notes]);
+
+  // --- HANDLERS ---
+  const handleAddNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNote.trim()) return;
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    
+    const noteToAdd: Note = { text: newNote, date: formattedDate, category: "General" };
+    setNotes([noteToAdd, ...notes]);
+    setNewNote("");
+  };
+
+  const toggleLike = (cityId: number, photoIndex: number) => {
+    const key = `${cityId}-${photoIndex}`;
+    setLikedPhotos(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // --- DATA ---
+  const visitedPlaces: TravelPlace[] = [
+    { id: 1, city: "Paris", country: "France", date: "June 2025", desc: "Walking through gardens.", gallery: [princessPhoto, princessPhoto] },
+    { id: 2, city: "Kyoto", country: "Japan", date: "Oct 2025", desc: "Temple mornings.", gallery: [princessPhoto, princessPhoto] },
+    { id: 3, city: "Bali", country: "Indonesia", date: "Dec 2025", desc: "Island sunsets.", gallery: [princessPhoto, princessPhoto] },
+    { id: 4, city: "New York", country: "USA", date: "Jan 2026", desc: "Snowy coffee dates.", gallery: [princessPhoto] },
+  ];
+
+  const filteredMemories = useMemo(() => {
+    return LOVELY_UPDATES.filter((item) => {
+      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = activeCategory === "All" || item.category === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchTerm, activeCategory]);
 
   return (
-    <div className="space-y-24 pb-20 overflow-hidden">
-      
-      {/* --- SECTION 1: MODERN HERO & SURPRISE --- */}
-      <section className="relative pt-10 px-4">
-        {/* Floating background blobs for a modern feel */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-96 bg-rose-50/50 blur-[120px] -z-10 rounded-full" />
-        
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-12"
-          >
-            <span className="inline-block px-4 py-1.5 rounded-full bg-rose-100 text-rose-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-6 shadow-sm border border-rose-200/50">
-              {daysUntilValentine} Days until Valentine's
-            </span>
-            <h1 className="text-5xl md:text-7xl font-serif text-slate-800 mb-6 leading-tight">
-              A Collection of <br />
-              <span className="italic text-rose-400">Lovely Moments</span>
-            </h1>
-            <p className="text-slate-400 text-lg font-light max-w-lg mx-auto leading-relaxed">
-              Every day with you is a new chapter of happiness. 
-              Explore our digital sanctuary below.
-            </p>
-          </motion.div>
+    <div className="relative space-y-32 pb-32 overflow-hidden bg-[#fffdfd]">
 
-          {/* THE PRINCESS SURPRISE BOX */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="glass-card rounded-[3rem] p-8 md:p-16 border border-white shadow-[0_20px_50px_rgba(251,113,133,0.15)] relative"
-          >
-            <div className="absolute top-8 left-8 text-rose-200/60 animate-pulse">✨</div>
-            <div className="absolute bottom-8 right-8 text-rose-200/60 animate-pulse delay-700">✨</div>
 
-            <div className="text-center relative z-10">
-              <h2 className="text-xs uppercase tracking-[0.4em] text-rose-400 mb-2 font-bold">Valentine Chapter</h2>
-              <p className="text-slate-500 font-serif italic text-lg mb-8">
-                A letter specifically for my princess...
-              </p>
-              
-              <FloatingLetter 
-                princessName="My Queen"
-                image={princessPhoto} 
-                message="As we get closer to our Valentine's celebration, I wanted to create this digital home for us. You are the heartbeat of every memory on this page, and the light of my life."
-              />
-            </div>
-          </motion.div>
-        </div>
+      {/* --- HERO --- */}
+      <section className="max-w-7xl mx-auto px-6 pt-20">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
+          <h1 className="text-6xl md:text-9xl font-serif text-slate-900 leading-tight">Grown <span className="text-rose-300 italic">In Grace.</span></h1>
+        </motion.div>
+        <img src={princessPhoto} alt="Hero" className="w-full h-[50vh] md:h-[60vh] object-cover rounded-[40px] shadow-2xl" />
       </section>
 
-      {/* --- SECTION 2: THE MEMORY FEED --- */}
-      <section className="max-w-6xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
-          <div className="max-w-md">
-            <h2 className="text-3xl md:text-4xl font-serif text-slate-800">The Memory Feed</h2>
-            <p className="text-slate-400 mt-2 italic text-sm">Chronological updates of our life together.</p>
-          </div>
-          <div className="h-px flex-1 bg-rose-100 mx-8 hidden md:block opacity-50" />
-          <span className="text-[10px] uppercase tracking-widest text-rose-300 font-bold">Est. 2025</span>
-        </div>
-
-        {/* Modern Staggered Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-10 lg:gap-16">
-          {LOVELY_UPDATES.map((update, index) => (
-            <motion.div
-              key={update.id}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ 
-                duration: 0.8, 
-                delay: index % 2 === 0 ? 0 : 0.2 // Staggered reveal effect
-              }}
-              className={index % 2 !== 0 ? 'md:mt-20' : ''} // Staggered visual offset
-            >
-              <LovelyCard update={update} />
+      {/* --- TRAVEL PINS --- */}
+      <section className="max-w-7xl mx-auto px-6">
+        <h2 className="text-3xl font-serif text-slate-800 mb-10">Passport Pins</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          {visitedPlaces.map((place) => (
+            <motion.div key={place.id} whileHover={{ y: -5 }} onClick={() => setSelectedCity(place)} className="relative p-6 md:p-8 bg-white rounded-3xl border border-slate-100 shadow-sm cursor-pointer text-center group">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-rose-400 rounded-full" />
+              <h3 className="text-lg md:text-xl font-serif text-slate-800">{place.city}</h3>
+              <p className="text-[9px] text-rose-300 uppercase font-bold mt-2">View Album</p>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* --- FOOTER DECORATION --- */}
-      <footer className="text-center pt-20">
-        <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full border border-rose-50 text-rose-300 text-[10px] tracking-widest uppercase">
-          <span className="w-1 h-1 bg-rose-300 rounded-full animate-ping" />
-          Live Archive Active
+      {/* --- NOTE BOARD (RE-FIXED & RESPONSIVE) --- */}
+      <section className="max-w-6xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-serif text-slate-800">Love & Prayer Notes</h2>
+          <form 
+            onSubmit={handleAddNote} 
+            className="mt-10 max-w-lg mx-auto flex flex-col sm:flex-row gap-3 p-2 bg-white rounded-2xl sm:rounded-full border border-rose-100 shadow-sm focus-within:shadow-md"
+          >
+            <input 
+              type="text" 
+              value={newNote} 
+              onChange={(e) => setNewNote(e.target.value)}
+              placeholder="Add a memory..."
+              className="flex-1 bg-transparent px-6 py-3 outline-none font-serif text-slate-600 text-base md:text-sm"
+            />
+            <button 
+              type="submit"
+              className="bg-rose-300 text-white px-8 py-3 sm:py-2 rounded-xl sm:rounded-full text-sm font-bold uppercase tracking-widest hover:bg-rose-400 transition-all"
+            >
+              Post
+            </button>
+          </form>
         </div>
-      </footer>
+
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+          <AnimatePresence>
+            {notes.map((note, i) => (
+              <motion.div 
+                key={`${i}-${note.date}`} 
+                layout 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="p-8 bg-white border border-slate-100 shadow-sm rounded-2xl hover:shadow-md transition-shadow break-inside-avoid"
+              >
+                <p className="text-slate-600 font-serif italic mb-4 leading-relaxed">"{note.text}"</p>
+                <div className="flex justify-between items-center text-[9px] uppercase tracking-[0.2em] pt-4 border-t border-slate-50">
+                  <span className="font-bold text-rose-300">{note.category}</span>
+                  <span className="text-slate-400 font-medium">{note.date}</span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </section>
+
+      {/* --- ARCHIVE --- */}
+      <section className="max-w-6xl mx-auto px-6">
+        <h2 className="text-3xl font-serif text-slate-800 mb-10">Memory Archive</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          {filteredMemories.map((update, index) => (
+            <div key={update.id} className={index % 2 !== 0 ? 'md:mt-20' : ''}>
+              <LovelyCard update={update} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="text-center py-20 opacity-30 text-[10px] tracking-[0.5em] uppercase">Always Growing • Always Grateful</footer>
     </div>
   );
 };
